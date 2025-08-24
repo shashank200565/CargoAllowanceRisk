@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Border Security Dashboard</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;}
+    body{background:#0f111a;color:#f5f5f5;}
+    a{text-decoration:none;color:inherit;}
+    .container{display:flex;min-height:100vh;}
+    nav{width:250px;background:#1c1f2a;padding:20px;}
+    main{flex:1;padding:20px;overflow-y:auto;}
+    h1,h2{margin-bottom:20px;}
+    nav ul{list-style:none;}
+    nav li{margin:20px 0;cursor:pointer;}
+    nav li:hover{color:#00d1ff;}
+    .card{background:#1f2233;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+    .card h3{margin-bottom:10px;color:#00d1ff;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:12px;text-align:left;border-bottom:1px solid #333;}
+    th{color:#00d1ff;}
+    .btn{background:#00d1ff;color:#111;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;}
+    .btn:hover{background:#008bbf;}
+    .alert{background:#ff4d4d;padding:15px;border-radius:10px;margin-bottom:20px;}
+    #map{width:100%;height:400px;border-radius:12px;margin-bottom:20px;}
+    input[type="file"]{margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <nav>
+        <h2>BorderSec</h2>
+        <ul>
+            <li onclick="showSection('dashboard')">Dashboard</li>
+            <li onclick="showSection('ml')">ML Analysis</li>
+            <li onclick="showSection('blockchain')">Blockchain Logs</li>
+            <li onclick="showSection('alerts')">Alerts</li>
+        </ul>
+    </nav>
+
+    <main>
+        <!-- Dashboard -->
+        <section id="dashboard" class="card-section">
+            <h1>Dashboard</h1>
+            <div class="grid">
+                <div class="card">
+                    <h3>Total Breaches</h3>
+                    <p id="breaches-count">0</p>
+                </div>
+                <div class="card">
+                    <h3>Active Alerts</h3>
+                    <p id="alerts-count">0</p>
+                </div>
+                <div class="card">
+                    <h3>Recent Activity Map</h3>
+                    <div id="map"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ML Section -->
+        <section id="ml" class="card-section" style="display:none;">
+            <h1>ML Model Detection</h1>
+            <div class="card">
+                <h3>Upload Image/Video</h3>
+                <input type="file" id="fileInput">
+                <button class="btn" onclick="runML()">Run ML Detection</button>
+            </div>
+            <div class="card">
+                <h3>ML Output</h3>
+                <p id="ml-output">No data yet.</p>
+            </div>
+        </section>
+
+        <!-- Blockchain Section -->
+        <section id="blockchain" class="card-section" style="display:none;">
+            <h1>Blockchain Logs</h1>
+            <div class="card">
+                <h3>Recent Transactions</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Timestamp</th>
+                            <th>Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockchain-logs">
+                        <tr><td>Loading...</td><td>-</td><td>-</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Alerts Section -->
+        <section id="alerts" class="card-section" style="display:none;">
+            <h1>Security Alerts</h1>
+            <div id="alerts-container">
+                <div class="alert">No alerts at the moment.</div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+
+<script>
+    // Sidebar navigation
+    function showSection(sectionId){
+        document.querySelectorAll('.card-section').forEach(sec=>sec.style.display='none');
+        document.getElementById(sectionId).style.display='block';
+    }
+
+    // Initialize map
+    const map = L.map('map').setView([28.6139, 77.2090], 5); // India center
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const breachMarkers = [];
+
+    function addMapMarker(lat,lng,desc){
+        const marker = L.marker([lat,lng]).addTo(map).bindPopup(desc);
+        breachMarkers.push(marker);
+    }
+
+    // Mock ML detection
+    async function runML(){
+        const fileInput = document.getElementById('fileInput');
+        if(fileInput.files.length===0){ alert("Upload a file."); return; }
+        document.getElementById('ml-output').innerText="Processing...";
+        
+        // Simulate ML detection
+        setTimeout(()=>{
+            const detected = Math.random()>0.5;
+            const result = detected ? "Suspicious Activity Detected!" : "No Threat Detected.";
+            document.getElementById('ml-output').innerText=result;
+            if(detected){
+                addAlert(result);
+                updateDashboardCounts();
+                const lat = 28.6 + Math.random()*2; // random nearby coords
+                const lng = 77.2 + Math.random()*2;
+                addMapMarker(lat,lng,"Suspicious Activity Detected");
+                animateBlockchain("Border breach detected");
+            }
+        },1500);
+    }
+
+    // Alerts
+    function addAlert(message){
+        const container=document.getElementById('alerts-container');
+        const alertDiv=document.createElement('div');
+        alertDiv.className='alert';
+        alertDiv.innerText=message;
+        container.prepend(alertDiv);
+    }
+
+    // Dashboard counts
+    function updateDashboardCounts(){
+        const alerts = document.querySelectorAll('.alert').length;
+        document.getElementById('alerts-count').innerText=alerts;
+        document.getElementById('breaches-count').innerText=alerts;
+    }
+
+    // Blockchain logs
+    function animateBlockchain(event){
+        const tbody = document.getElementById('blockchain-logs');
+        const tr=document.createElement('tr');
+        const timestamp = new Date().toLocaleString();
+        const hash = Math.random().toString(36).substring(2,10);
+        tr.innerHTML=⁠ <td>${event}</td><td>${timestamp}</td><td>${hash}</td> ⁠;
+        tbody.prepend(tr);
+    }
+
+    // Initial mock data
+    for(let i=0;i<3;i++){
+        animateBlockchain("Drone surveillance uploaded");
+        addMapMarker(28.6+Math.random()*2,77.2+Math.random()*2,"Routine Surveillance");
+    }
+
+    updateDashboardCounts();
+</script>
+
+</body>
+</html>
